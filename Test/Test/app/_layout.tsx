@@ -6,7 +6,7 @@ import {
   useSegments,
 } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { loadStoredToken } from "../services/api";
 import { AppDispatch, RootState, store } from "../store";
@@ -107,24 +107,26 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, isAuthenticated, user?.tutorial_seen, segments, navState?.key]);
 
-  if (!hydrated) {
-    console.log("[AuthGate] rendering loading spinner (not hydrated)");
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#0f131d",
-        }}
-      >
-        <ActivityIndicator color="#ffffff" />
-      </View>
-    );
-  }
-
-  console.log("[AuthGate] rendering children (Stack)");
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {!hydrated && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#0f131d",
+              zIndex: 9999,
+            },
+          ]}
+        >
+          <ActivityIndicator color="#ffffff" size="large" />
+        </View>
+      )}
+    </>
+  );
 }
 
 export default function RootLayout() {
