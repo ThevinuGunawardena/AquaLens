@@ -33,3 +33,4 @@ yarn-error.*
 
 # Local env overrides
 .env*.local
+
