@@ -35,6 +35,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // 1. On mount: restore any saved token, then validate it against the API.
   useEffect(() => {
     console.log("[AuthGate] bootstrap effect starting");
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) {
+        console.log(
+          "[AuthGate] safety timeout reached — marking hydrated = true",
+        );
+        dispatch(setHydrated(true));
+      }
+    }, 2000);
+
     (async () => {
       let token: string | null = null;
       try {
@@ -51,7 +61,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         console.log(
           "[AuthGate] no token — marking hydrated, staying signed out",
         );
-        dispatch(setHydrated(true));
+        if (isMounted) dispatch(setHydrated(true));
+        clearTimeout(safetyTimer);
         return;
       }
 
@@ -63,10 +74,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         console.log("[AuthGate] fetchMe FAILED:", e);
       } finally {
         console.log("[AuthGate] marking hydrated = true");
-        dispatch(setHydrated(true));
+        if (isMounted) dispatch(setHydrated(true));
+        clearTimeout(safetyTimer);
       }
     })();
-  }, []);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
+  }, [dispatch]);
 
   // 2. Once hydrated, route based on auth + tutorial state.
   useEffect(() => {

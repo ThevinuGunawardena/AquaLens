@@ -15,8 +15,22 @@ let cachedToken: string | null = null;
 
 /** Call once, on app start, before rendering anything that calls the API. */
 export async function loadToken(): Promise<string | null> {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      cachedToken = window.localStorage.getItem(TOKEN_KEY);
+      return cachedToken;
+    } catch {
+      // ignore
+    }
+  }
   try {
-    cachedToken = await AsyncStorage.getItem(TOKEN_KEY);
+    const timeout = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), 1000),
+    );
+    cachedToken = await Promise.race([
+      AsyncStorage.getItem(TOKEN_KEY),
+      timeout,
+    ]);
   } catch {
     cachedToken = null;
   }
@@ -25,6 +39,13 @@ export async function loadToken(): Promise<string | null> {
 
 export async function saveToken(token: string): Promise<void> {
   cachedToken = token;
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.setItem(TOKEN_KEY, token);
+    } catch {
+      // ignore
+    }
+  }
   try {
     await AsyncStorage.setItem(TOKEN_KEY, token);
   } catch {
@@ -34,6 +55,13 @@ export async function saveToken(token: string): Promise<void> {
 
 export async function clearToken(): Promise<void> {
   cachedToken = null;
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.removeItem(TOKEN_KEY);
+    } catch {
+      // ignore
+    }
+  }
   try {
     await AsyncStorage.removeItem(TOKEN_KEY);
   } catch {
