@@ -5,7 +5,8 @@ import FishSpeciesDropdown, {
 import TopHeader from "@/components/TopHeader";
 import { ApiError } from "@/services/api";
 import { catchesApi } from "@/services/catchesApi";
-import type { RootState } from "@/store";
+import type { AppDispatch, RootState } from "@/store";
+import { fetchMe } from "@/store/authSlice";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -19,7 +20,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 // Best-effort name extraction — newly_unlocked_achievements is typed as
 // unknown[] on the client, so we don't assume a shape. Adjust the field
@@ -37,6 +38,7 @@ function achievementName(a: unknown, index: number): string {
 
 const index = () => {
   const colors = useSelector((state: RootState) => state.theme.colors);
+  const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
 
   const [lengthText, setLengthText] = useState("");
@@ -60,7 +62,7 @@ const index = () => {
 
   const length = parseFloat(lengthText) || 0;
   const width = parseFloat(widthText) || 0;
-  const canSave = !!selectedFish && length > 0 && width > 0 && !saving;
+  const canSave = !!selectedFish && length > 0 && !saving;
 
   const handleSave = async () => {
     if (!selectedFish) return;
@@ -69,11 +71,13 @@ const index = () => {
       const result = await catchesApi.add({
         species_id: selectedFish.id,
         length_cm: length,
-        width_cm: width,
+        width_cm: width > 0 ? width : undefined,
         remarks: remarks.trim() || undefined,
         boat_number: boatNumber.trim() || undefined,
         image: imageUrl ?? undefined,
       });
+
+      dispatch(fetchMe());
 
       const unlocked = result.newly_unlocked_achievements ?? [];
 
@@ -99,7 +103,7 @@ const index = () => {
             ? ` — ${unlocked.length} new achievement${unlocked.length > 1 ? "s" : ""} unlocked!`
             : "") +
           achievementLines,
-        [{ text: "OK", onPress: () => router.back() }],
+        [{ text: "OK" }],
       );
     } catch (e) {
       const message =

@@ -151,7 +151,7 @@ const Profile = () => {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -166,9 +166,18 @@ const Profile = () => {
     }
     setSaving(true);
     try {
+      let avatarUrl: string | undefined = undefined;
+      if (photoUri && !photoUri.startsWith("http")) {
+        try {
+          avatarUrl = await catchesApi.uploadImage(photoUri);
+        } catch {
+          // If upload fails, continue updating profile details
+        }
+      }
       await dispatch(
         updateProfile({
           name: form.name.trim(),
+          avatar_url: avatarUrl ?? user?.avatar_url ?? undefined,
           school_or_university: form.school_or_university.trim() || null,
           district: form.district.trim() || null,
         }),

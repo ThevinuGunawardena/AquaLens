@@ -158,6 +158,12 @@ const authSlice = createSlice({
       })
       .addCase(fetchMe.fulfilled, (state, action) => {
         state.user = action.payload;
+        state.isAuthenticated = true;
+      })
+      .addCase(fetchMe.rejected, (state) => {
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         if (state.user)

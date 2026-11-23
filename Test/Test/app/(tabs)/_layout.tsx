@@ -1,40 +1,61 @@
 import { tabs } from "@/constants/data";
-import { colors, components } from "@/constants/theme";
+import { components } from "@/constants/theme";
+import type { RootState } from "@/store";
 import { Tabs } from "expo-router";
-import { Image, View } from "react-native";
+import { Award, BookOpen, Home, Settings, User } from "lucide-react-native";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 
 const tabBar = components.tabBar;
-const ICON_SIZE = 24; // pick whatever matches your design
+const ICON_SIZE = 22;
 
-const withAlpha = (hex: string, alpha: number) => {
-  const a = Math.round(alpha * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return `${hex}${a}`;
+const getTabIcon = (name: string, focused: boolean, color: string) => {
+  switch (name) {
+    case "index":
+      return <Home size={ICON_SIZE} color={color} />;
+    case "dictionary":
+      return <BookOpen size={ICON_SIZE} color={color} />;
+    case "certificate":
+      return <Award size={ICON_SIZE} color={color} />;
+    case "profile":
+      return <User size={ICON_SIZE} color={color} />;
+    case "settings":
+      return <Settings size={ICON_SIZE} color={color} />;
+    default:
+      return <Home size={ICON_SIZE} color={color} />;
+  }
 };
 
-const TabIcon = ({ focused, icon }: TabIconProps) => {
+const TabIcon = ({
+  focused,
+  name,
+  accentColor,
+  mutedColor,
+}: {
+  focused: boolean;
+  name: string;
+  accentColor: string;
+  mutedColor: string;
+}) => {
+  const iconColor = focused ? "#081126" : mutedColor;
+
   return (
-    <View className="tabs-icon">
+    <View style={{ alignItems: "center", justifyContent: "center" }}>
       <View
-        className="tabs-pill"
         style={[
           {
-            width: tabBar.iconFrame,
-            height: tabBar.iconFrame,
-            borderRadius: tabBar.iconFrame / 2,
+            width: 44,
+            height: 44,
+            borderRadius: 22,
             alignItems: "center",
             justifyContent: "center",
+            backgroundColor: "transparent",
           },
-          focused && { backgroundColor: colors.accent },
+          focused && { backgroundColor: accentColor },
         ]}
       >
-        <Image
-          source={icon}
-          resizeMode="contain"
-          style={{ width: ICON_SIZE, height: ICON_SIZE }}
-        />
+        {getTabIcon(name, focused, iconColor)}
       </View>
     </View>
   );
@@ -42,6 +63,7 @@ const TabIcon = ({ focused, icon }: TabIconProps) => {
 
 const TabLayout = () => {
   const insets = useSafeAreaInsets();
+  const colors = useSelector((state: RootState) => state.theme.colors);
 
   return (
     <Tabs
@@ -50,22 +72,27 @@ const TabLayout = () => {
         tabBarShowLabel: false,
         tabBarStyle: {
           position: "absolute",
-          bottom: Math.max(insets.bottom, tabBar.horizontalInset),
+          bottom: Math.max(insets.bottom, 12),
           height: tabBar.height,
           marginHorizontal: tabBar.horizontalInset,
           borderRadius: tabBar.radius,
-          backgroundColor: withAlpha(colors.primary, 0.8), // dim background only
-          borderTopWidth: 0,
-          elevation: 0,
-          // no opacity here — it would dim icons/pills too
+          backgroundColor: colors.surfaceContainer,
+          borderColor: colors.border,
+          borderWidth: 1,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 10,
         },
         tabBarItemStyle: {
-          paddingVertical: tabBar.height / 2 - tabBar.iconFrame / 1.6,
+          paddingVertical: (tabBar.height - 44) / 2,
         },
         tabBarIconStyle: {
-          width: tabBar.iconFrame,
-          height: tabBar.iconFrame,
+          width: 44,
+          height: 44,
           alignItems: "center",
+          justifyContent: "center",
         },
       }}
     >
@@ -76,7 +103,12 @@ const TabLayout = () => {
           options={{
             title: tab.title,
             tabBarIcon: ({ focused }) => (
-              <TabIcon focused={focused} icon={tab.icon} />
+              <TabIcon
+                focused={focused}
+                name={tab.name}
+                accentColor={colors.accent}
+                mutedColor={colors.mutedForeground}
+              />
             ),
           }}
         />

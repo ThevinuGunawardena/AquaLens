@@ -140,7 +140,7 @@ const TopHeader = () => {
                 backgroundColor: colors.surfaceContainer,
               },
             ]}
-            onPress={() => router.push("/profile")}
+            onPress={() => router.push("/(tabs)/profile")}
           >
             <User size={20} color={colors.foreground} />
           </Pressable>

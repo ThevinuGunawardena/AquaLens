@@ -66,20 +66,24 @@ const Dictionary = () => {
     >
       {/* Header */}
       <View style={styles.headerRow}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.backButton,
-            {
-              backgroundColor: pressed
-                ? colors.surfaceContainer
-                : "transparent",
-            },
-          ]}
-        >
-          <ArrowLeft size={22} color={colors.foreground} />
-        </Pressable>
+        {router.canGoBack() ? (
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.backButton,
+              {
+                backgroundColor: pressed
+                  ? colors.surfaceContainer
+                  : "transparent",
+              },
+            ]}
+          >
+            <ArrowLeft size={22} color={colors.foreground} />
+          </Pressable>
+        ) : (
+          <View style={styles.backButton} />
+        )}
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           Fish Dictionary
         </Text>
@@ -318,7 +322,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 120,
     flexGrow: 1,
   },
   separator: {

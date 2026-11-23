@@ -6,6 +6,7 @@ import { setMode } from "@/store/ThemeSlice";
 import { useRouter } from "expo-router";
 import {
   Bell,
+  BookOpen,
   ChevronRight,
   Info,
   LogOut,
@@ -213,6 +214,12 @@ const Settings = () => {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
+          <SettingRow
+            icon={BookOpen}
+            title="Fish Dictionary"
+            subtitle="Browse all species and biological specifications"
+            onPress={() => router.push("/(tabs)/dictionary")}
+          />
           <SettingRow
             icon={Info}
             title="About Aqua Lens"

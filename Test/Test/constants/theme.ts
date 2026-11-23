@@ -9,7 +9,6 @@ export const colors = {
   border: "rgba(0, 0, 0, 0.1)",
   success: "#16a34a",
   destructive: "#dc2626",
-  subscription: "#8fd1bd",
 } as const;
 
 export const spacing = {

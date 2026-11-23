@@ -31,14 +31,10 @@ export interface AddCatchResult {
   progress: Record<string, unknown>;
 }
 
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://aquaquest.msdfar.com";
+
 /**
  * Converts an image path returned by the backend into a full URL.
- *
- * Example:
- * aquaquest.msdfar.com/static/uploads/catches/example.jpg
- *
- * becomes:
- * https://aquaquest.msdfar.com/static/uploads/catches/example.jpg
  */
 export function getImageUrl(image: string | null): string | null {
   if (!image) {
@@ -50,8 +46,17 @@ export function getImageUrl(image: string | null): string | null {
     return image;
   }
 
-  // Backend returns URL without protocol
-  return `http://${image}`;
+  // Root-relative path (/static/...)
+  if (image.startsWith("/")) {
+    return `${BASE_URL}${image}`;
+  }
+
+  // Domain without protocol (e.g. aquaquest.msdfar.com/static/...)
+  if (image.includes("/")) {
+    return `http://${image}`;
+  }
+
+  return `${BASE_URL}/${image}`;
 }
 
 function guessMimeType(filename: string): string {
