@@ -1,3 +1,4 @@
+import { ApiError, setAuthToken } from "@/services/api";
 import { authApi, type UserDto } from "@/services/authApi";
 import { usersApi, type ProfileUpdateInput } from "@/services/tutorialApi";
 import {
@@ -71,9 +72,16 @@ export const googleSignIn = createAsyncThunk(
 
 /** Re-fetch the current user against the token already in state — used by
  * _layout.tsx's bootstrap check and by screens that want a fresh copy. */
-export const fetchMe = createAsyncThunk("auth/fetchMe", async () =>
-  authApi.me(),
-);
+export const fetchMe = createAsyncThunk("auth/fetchMe", async () => {
+  try {
+    return await authApi.me();
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+      setAuthToken(null);
+    }
+    throw err;
+  }
+});
 
 /** Screens call dispatch(updateProfile({ name, email, phone })) with
  * local-only fields. The backend only persists name/avatar_url today, so

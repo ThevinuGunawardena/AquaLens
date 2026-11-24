@@ -122,7 +122,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     } else {
       console.log("[AuthGate] -> no redirect needed, staying put");
     }
-  }, [hydrated, isAuthenticated, user?.tutorial_seen, segments, navState?.key]);
+  }, [hydrated, isAuthenticated, user, segments, navState?.key, router]);
 
   return (
     <>

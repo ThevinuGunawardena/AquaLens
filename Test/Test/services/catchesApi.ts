@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 
-import { api } from "./api";
+import { api, resolveAssetUrl } from "./api";
 
 export interface CatchDto {
   id: number;
@@ -31,32 +31,17 @@ export interface AddCatchResult {
   progress: Record<string, unknown>;
 }
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://aquaquest.msdfar.com";
-
 /**
  * Converts an image path returned by the backend into a full URL.
  */
-export function getImageUrl(image: string | null): string | null {
-  if (!image) {
-    return null;
-  }
+export const getImageUrl = resolveAssetUrl;
 
-  // Already a complete URL
-  if (image.startsWith("http://") || image.startsWith("https://")) {
-    return image;
-  }
-
-  // Root-relative path (/static/...)
-  if (image.startsWith("/")) {
-    return `${BASE_URL}${image}`;
-  }
-
-  // Domain without protocol (e.g. aquaquest.msdfar.com/static/...)
-  if (image.includes("/")) {
-    return `http://${image}`;
-  }
-
-  return `${BASE_URL}/${image}`;
+function extensionFromMimeType(mimeType?: string | null): string | null {
+  if (!mimeType) return null;
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("webp")) return "webp";
+  if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg";
+  return null;
 }
 
 function guessMimeType(filename: string): string {
@@ -73,42 +58,44 @@ function guessMimeType(filename: string): string {
   return "image/jpeg";
 }
 
+export interface UploadImageMetadata {
+  fileName?: string | null;
+  mimeType?: string | null;
+}
+
 export const catchesApi = {
   /**
    * Uploads a local photo and returns the hosted URL.
    */
-  async uploadImage(localUri: string): Promise<string> {
-    console.log("UPLOAD IMAGE - Local URI:", localUri);
-
-    const rawName = localUri.split("/").pop()?.split("?")[0] || "";
-
+  async uploadImage(
+    localUri: string,
+    meta?: UploadImageMetadata,
+  ): Promise<string> {
+    const uriTail = localUri.startsWith("data:")
+      ? ""
+      : localUri.split("/").pop()?.split("?")[0] || "";
+    const rawName = meta?.fileName?.trim() || uriTail;
     const hasExt = /\.(jpg|jpeg|png|webp)$/i.test(rawName);
-
-    const filename = hasExt ? rawName : `catch-${Date.now()}.jpg`;
-
-    console.log("UPLOAD IMAGE - Filename:", filename);
+    const fallbackExt = extensionFromMimeType(meta?.mimeType) ?? "jpg";
+    const filename = hasExt ? rawName : `catch-${Date.now()}.${fallbackExt}`;
 
     const form = new FormData();
 
     if (Platform.OS === "web") {
-      console.log("UPLOAD IMAGE - Platform: Web");
-
       const res = await fetch(localUri);
-
-      console.log("UPLOAD IMAGE - Fetch status:", res.status);
-
+      if (!res.ok) {
+        throw new Error(`Could not read selected image (${res.status}).`);
+      }
       const blob = await res.blob();
-
-      console.log("UPLOAD IMAGE - Blob:", blob);
-
-      form.append("file", blob, filename);
+      const webFilename = hasExt
+        ? filename
+        : `catch-${Date.now()}.${extensionFromMimeType(blob.type) ?? fallbackExt}`;
+      form.append("file", blob, webFilename);
     } else {
-      console.log("UPLOAD IMAGE - Platform:", Platform.OS);
-
       form.append("file", {
         uri: localUri,
         name: filename,
-        type: guessMimeType(filename),
+        type: meta?.mimeType || guessMimeType(filename),
       } as any);
     }
 
@@ -117,16 +104,11 @@ export const catchesApi = {
       form,
       {
         bodyType: "multipart",
+        timeoutMs: 30_000,
       },
     );
 
-    console.log("UPLOAD IMAGE RESPONSE:", data);
-
-    // Also make sure uploaded URL is complete
     const imageUrl = getImageUrl(data.url);
-
-    console.log("UPLOAD IMAGE FULL URL:", imageUrl);
-
     return imageUrl ?? data.url;
   },
 

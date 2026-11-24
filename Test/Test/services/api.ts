@@ -9,7 +9,66 @@ import { clearToken, loadToken, saveToken } from "./tokenStorage";
 // "127.0.0.1" means the phone itself — use your machine's LAN IP instead,
 // e.g. "http://192.168.1.20:8000". Override per-environment with
 // EXPO_PUBLIC_API_URL so you don't have to edit this file per machine.
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const BASE_URL = (
+  process.env.EXPO_PUBLIC_API_URL ?? "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
+
+export const API_BASE_URL = BASE_URL;
+
+/** Resolves a backend-returned asset or relative path to a full URL. */
+export function resolveAssetUrl(assetPath: string | null | undefined): string | null {
+  if (!assetPath) return null;
+
+  if (
+    assetPath.startsWith("http://") ||
+    assetPath.startsWith("https://") ||
+    assetPath.startsWith("blob:") ||
+    assetPath.startsWith("data:") ||
+    assetPath.startsWith("file:")
+  ) {
+    return assetPath;
+  }
+
+  if (assetPath.startsWith("/")) {
+    return `${BASE_URL}${assetPath}`;
+  }
+
+  // Domain without protocol (e.g. aqualens.msdfar.com/static/...)
+  if (/^[^/]+\.[a-z]{2,}(?:\/|$)/i.test(assetPath)) {
+    return `http://${assetPath}`;
+  }
+
+  return `${BASE_URL}/${assetPath}`;
+}
+
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/** Fetch wrapper that aborts stalled requests after `timeoutMs`. */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err: any) {
+    console.error(`[API Fetch Failed] ${init.method ?? "GET"} ${url}:`, err);
+    if (err?.name === "AbortError") {
+      throw new ApiError(
+        `Request to ${url} timed out after ${timeoutMs / 1000}s. Check that the backend server is reachable.`,
+        0,
+      );
+    }
+    throw new ApiError(
+      `Couldn't reach the server at ${url}. (${err?.message || "Check your connection"})`,
+      0,
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 export class ApiError extends Error {
   status: number;
@@ -55,6 +114,8 @@ interface RequestOptions {
    * endpoints (like GET /catches/mine) that put extra fields such as
    * `total`, `limit`, `offset` alongside the envelope. */
   raw?: boolean;
+  /** Optional request timeout override in milliseconds. */
+  timeoutMs?: number;
 }
 
 async function request<T>(
@@ -67,6 +128,7 @@ async function request<T>(
     bodyType = "json",
     auth = true,
     raw = false,
+    timeoutMs,
   } = options;
 
   const headers: Record<string, string> = {};
@@ -87,17 +149,16 @@ async function request<T>(
     }
   }
 
-  let res: Response;
-  try {
-    console.log(`[API Request] ${method} ${BASE_URL}${path}`);
-    res = await fetch(`${BASE_URL}${path}`, { method, headers, body: payload });
-  } catch (err: any) {
-    console.error(`[API Fetch Failed] ${method} ${BASE_URL}${path}:`, err);
-    throw new ApiError(
-      `Couldn't reach the server at ${BASE_URL}${path}. (${err?.message || "Check your connection"})`,
-      0,
-    );
-  }
+  console.log(`[API Request] ${method} ${BASE_URL}${path}`);
+  const res = await fetchWithTimeout(
+    `${BASE_URL}${path}`,
+    {
+      method,
+      headers,
+      body: payload,
+    },
+    timeoutMs,
+  );
 
   let json: any = null;
   try {

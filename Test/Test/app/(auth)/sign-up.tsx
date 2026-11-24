@@ -1,5 +1,5 @@
 import { ApiError } from "@/services/api";
-import { authApi } from "@/services/authApi";
+import { authApi, isValidEmail } from "@/services/authApi";
 import { saveToken } from "@/services/tokenStorage";
 import type { RootState } from "@/store";
 import { login } from "@/store/authSlice";
@@ -46,12 +46,22 @@ const SignUp = () => {
 
   const onSubmit = async () => {
     if (!canSubmit) return;
+    const normalizedName = name.trim();
+    const normalizedEmail = email.trim();
+    if (normalizedName.length > 160) {
+      setError("Name must be 160 characters or fewer.");
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
       const session = await authApi.register(
-        name.trim(),
-        email.trim(),
+        normalizedName,
+        normalizedEmail,
         password,
       );
       await saveToken(session.token);
@@ -286,6 +296,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     padding: 24,
+    width: "100%",
+    maxWidth: 460,
+    alignSelf: "center",
   },
   brandContainer: {
     alignItems: "center",

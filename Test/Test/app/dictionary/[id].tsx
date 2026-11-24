@@ -118,33 +118,50 @@ export default function FishSpeciesDetail() {
 
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [species, setSpecies] = useState<SpeciesDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<{
+    loadedId?: string;
+    species: SpeciesDto | null;
+    error: string | null;
+  }>({
+    species: null,
+    error: null,
+  });
+
+  const loading = Boolean(id) && state.loadedId !== id;
+  const species = state.loadedId === id ? state.species : null;
+  const error = !id
+    ? "No species id provided."
+    : state.loadedId === id
+      ? state.error
+      : null;
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)/dictionary");
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
 
     let cancelled = false;
 
-    setLoading(true);
-    setError(null);
-
     speciesApi
       .get(id)
       .then((result) => {
         if (!cancelled) {
-          setSpecies(result);
+          setState({ loadedId: id, species: result, error: null });
         }
       })
       .catch((e) => {
         if (!cancelled) {
-          setError(e instanceof ApiError ? e.message : "Species not found");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
+          setState({
+            loadedId: id,
+            species: null,
+            error: e instanceof ApiError ? e.message : "Species not found",
+          });
         }
       });
 
@@ -239,7 +256,7 @@ export default function FishSpeciesDetail() {
           </Text>
 
           <Pressable
-            onPress={() => router.back()}
+            onPress={goBack}
             style={[
               styles.goBackButton,
               {
@@ -295,7 +312,7 @@ export default function FishSpeciesDetail() {
           {/* BACK BUTTON */}
 
           <Pressable
-            onPress={() => router.back()}
+            onPress={goBack}
             style={[
               styles.backButton,
               {

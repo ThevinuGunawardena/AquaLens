@@ -1,7 +1,7 @@
 import { ApiError } from "@/services/api";
 import { speciesApi, type SpeciesDto } from "@/services/speciesApi";
 import type { RootState } from "@/store";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -33,39 +33,46 @@ const FishSpeciesDropdown = ({ onSelect }: FishSpeciesDropdownProps) => {
   const [species, setSpecies] = useState<SpeciesDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    if (!isOpen) return;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-    let cancelled = false;
-
+  const loadSpecies = () => {
     setLoading(true);
     setError(null);
 
     speciesApi
       .list()
       .then((data) => {
-        if (!cancelled) {
+        if (mountedRef.current) {
           setSpecies(data);
         }
       })
       .catch((e) => {
-        if (!cancelled) {
+        if (mountedRef.current) {
           setError(
             e instanceof ApiError ? e.message : "Couldn't load species.",
           );
         }
       })
       .finally(() => {
-        if (!cancelled) {
+        if (mountedRef.current) {
           setLoading(false);
         }
       });
+  };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen]);
+  const openDropdown = () => {
+    setIsOpen(true);
+    if (species.length === 0 && !loading) {
+      loadSpecies();
+    }
+  };
 
   const filtered = species.filter((fish) => {
     const q = query.toLowerCase().trim();
@@ -92,7 +99,7 @@ const FishSpeciesDropdown = ({ onSelect }: FishSpeciesDropdownProps) => {
     <View style={styles.container}>
       {/* Main Dropdown Button */}
       <Pressable
-        onPress={() => setIsOpen(true)}
+        onPress={openDropdown}
         style={[
           styles.dropdownButton,
           {
@@ -221,6 +228,19 @@ const FishSpeciesDropdown = ({ onSelect }: FishSpeciesDropdownProps) => {
                 >
                   {error}
                 </Text>
+                <Pressable
+                  onPress={loadSpecies}
+                  style={[
+                    styles.retryButton,
+                    { backgroundColor: colors.surfaceContainerHigh },
+                  ]}
+                >
+                  <Text
+                    style={[styles.retryText, { color: colors.accent }]}
+                  >
+                    RETRY
+                  </Text>
+                </Pressable>
               </View>
             )}
 
@@ -503,6 +523,19 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     textAlign: "center",
+  },
+
+  retryButton: {
+    marginTop: 12,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+
+  retryText: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
 
   emptyText: {

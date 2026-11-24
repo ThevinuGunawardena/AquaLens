@@ -4,7 +4,8 @@ import {
 } from "@/services/achievementsApi";
 import { ApiError } from "@/services/api";
 import type { RootState } from "@/store";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -21,33 +22,36 @@ const Achievements = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
 
-    achievementsApi
-      .list()
-      .then((data) => {
-        if (!cancelled) {
-          setAchievements(data);
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(
-            e instanceof ApiError ? e.message : "Couldn't load achievements.",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
+      achievementsApi
+        .list()
+        .then((data) => {
+          if (!cancelled) {
+            setAchievements(data);
+            setError(null);
+          }
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setError(
+              e instanceof ApiError ? e.message : "Couldn't load achievements.",
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        });
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const completedCount = achievements.filter((item) => item.completed).length;
 

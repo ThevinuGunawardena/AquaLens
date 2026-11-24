@@ -142,7 +142,7 @@ const TutorialScreen = () => {
                   { color: colors.onPrimaryContainer },
                 ]}
               >
-                Got it, let's fish
+                Got it, let&apos;s fish
               </Text>
             </>
           )}
@@ -171,6 +171,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
     flexGrow: 1,
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center",
   },
 
   header: {

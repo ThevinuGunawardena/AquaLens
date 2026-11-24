@@ -1,4 +1,4 @@
-import { api, setAuthToken } from "./api";
+import { api, resolveAssetUrl, setAuthToken } from "./api";
 
 export interface UserDto {
   id: number;
@@ -29,6 +29,19 @@ export interface AuthResult {
   token: string;
 }
 
+/** Validates basic email format before submitting auth requests. */
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/** Normalizes user fields returned by the API (such as relative avatar URLs). */
+export function normalizeUser(user: UserDto): UserDto {
+  return {
+    ...user,
+    avatar_url: resolveAssetUrl(user.avatar_url),
+  };
+}
+
 export const authApi = {
   async register(
     name: string,
@@ -41,7 +54,7 @@ export const authApi = {
       { auth: false },
     );
     setAuthToken(data.access_token);
-    return { user: data.user, token: data.access_token };
+    return { user: normalizeUser(data.user), token: data.access_token };
   },
 
   async login(email: string, password: string): Promise<AuthResult> {
@@ -56,7 +69,7 @@ export const authApi = {
       auth: false,
     });
     setAuthToken(data.access_token);
-    return { user: data.user, token: data.access_token };
+    return { user: normalizeUser(data.user), token: data.access_token };
   },
 
   async google(idToken: string): Promise<AuthResult> {
@@ -66,10 +79,10 @@ export const authApi = {
       { auth: false },
     );
     setAuthToken(data.access_token);
-    return { user: data.user, token: data.access_token };
+    return { user: normalizeUser(data.user), token: data.access_token };
   },
 
-  me: () => api.get<UserDto>("/auth/me"),
+  me: async () => normalizeUser(await api.get<UserDto>("/auth/me")),
 
   signOut() {
     setAuthToken(null);

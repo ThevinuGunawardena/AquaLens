@@ -1,55 +1,58 @@
 import { ApiError } from "@/services/api";
 import { catchesApi, type CatchDto } from "@/services/catchesApi";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
   Image,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 
-const { width } = Dimensions.get("window");
-const ITEM_WIDTH = width * 0.42;
-
 const AddedPhotos = () => {
   const colors = useSelector((state: RootState) => state.theme.colors);
+  const { width } = useWindowDimensions();
+  const itemWidth = Math.min(width * 0.42, 220);
 
   const [catches, setCatches] = useState<CatchDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
 
-    catchesApi
-      .mine()
-      .then((data) => {
-        if (!cancelled) {
-          setCatches(data.filter((c) => !!c.image));
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(
-            e instanceof ApiError ? e.message : "Couldn't load your photos.",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
+      catchesApi
+        .mine()
+        .then((data) => {
+          if (!cancelled) {
+            setCatches(data.filter((c) => !!c.image));
+            setError(null);
+          }
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setError(
+              e instanceof ApiError ? e.message : "Couldn't load your photos.",
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        });
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   return (
     <View style={styles.container}>
@@ -124,7 +127,7 @@ const AddedPhotos = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => String(item.id)}
-          snapToInterval={ITEM_WIDTH + 12}
+          snapToInterval={itemWidth + 12}
           decelerationRate="fast"
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
@@ -132,7 +135,7 @@ const AddedPhotos = () => {
               style={[
                 styles.photoCard,
                 {
-                  width: ITEM_WIDTH,
+                  width: itemWidth,
                   backgroundColor: colors.card,
                   borderColor: colors.border,
                 },

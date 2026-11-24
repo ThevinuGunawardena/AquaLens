@@ -5,8 +5,9 @@ import {
   type CertificateEligibilityDto,
 } from "@/services/certificateApi";
 import type { RootState } from "@/store";
+import { useFocusEffect } from "expo-router";
 import { Award, CheckCircle2, LockKeyhole } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -24,26 +25,33 @@ const Certificate = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([certificateApi.eligibility(), certificateApi.achievers()])
-      .then(([eligibilityData, achieverData]) => {
-        if (cancelled) return;
-        setEligibility(eligibilityData);
-        setAchievers(achieverData);
-      })
-      .catch((reason) => {
-        if (!cancelled) {
-          setError(reason instanceof ApiError ? reason.message : "Couldn't load certificate progress.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      Promise.all([certificateApi.eligibility(), certificateApi.achievers()])
+        .then(([eligibilityData, achieverData]) => {
+          if (cancelled) return;
+          setEligibility(eligibilityData);
+          setAchievers(achieverData);
+          setError(null);
+        })
+        .catch((reason) => {
+          if (!cancelled) {
+            setError(
+              reason instanceof ApiError
+                ? reason.message
+                : "Couldn't load certificate progress.",
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const remaining = eligibility
     ? Math.max(0, eligibility.required_catches - eligibility.total_catches)

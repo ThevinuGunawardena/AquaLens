@@ -3,7 +3,7 @@ import { components } from "@/constants/theme";
 import type { RootState } from "@/store";
 import { Tabs } from "expo-router";
 import { Award, BookOpen, Home, Settings, User } from "lucide-react-native";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 
@@ -80,10 +80,17 @@ const TabLayout = () => {
           borderColor: colors.border,
           borderWidth: 1,
           elevation: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.25,
-          shadowRadius: 10,
+          ...Platform.select({
+            web: {
+              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.25)",
+            },
+            default: {
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+            },
+          }),
         },
         tabBarItemStyle: {
           paddingVertical: (tabBar.height - 44) / 2,

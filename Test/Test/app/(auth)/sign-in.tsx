@@ -1,5 +1,5 @@
 import { ApiError } from "@/services/api";
-import { authApi } from "@/services/authApi";
+import { authApi, isValidEmail } from "@/services/authApi";
 import { saveToken } from "@/services/tokenStorage";
 import type { RootState } from "@/store";
 import { login } from "@/store/authSlice";
@@ -37,10 +37,15 @@ const SignIn = () => {
 
   const onSubmit = async () => {
     if (!canSubmit) return;
+    const normalizedEmail = email.trim();
+    if (!isValidEmail(normalizedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
-      const session = await authApi.login(email.trim(), password);
+      const session = await authApi.login(normalizedEmail, password);
       await saveToken(session.token);
       dispatch(login({ user: session.user, token: session.token }));
 
@@ -236,6 +241,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     padding: 24,
+    width: "100%",
+    maxWidth: 460,
+    alignSelf: "center",
   },
   brandContainer: {
     alignItems: "center",

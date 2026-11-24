@@ -2,7 +2,7 @@ import type { RootState } from "@/store";
 import { toggleMode } from "@/store/ThemeSlice";
 import { useRouter } from "expo-router";
 import { HelpCircle, Moon, Sun, User } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 
 // How much XP is needed per level.
@@ -70,6 +70,7 @@ const TopHeader = () => {
           {/* Theme Toggle */}
           <Pressable
             onPress={() => dispatch(toggleMode())}
+            accessibilityLabel="Toggle theme"
             style={({ pressed }) => [
               styles.themeButton,
               {
@@ -94,8 +95,15 @@ const TopHeader = () => {
                 styles.levelGlow,
                 {
                   backgroundColor: colors.accent,
-                  shadowColor: colors.accent,
                 },
+                Platform.select({
+                  web: {
+                    boxShadow: `0px 0px 10px ${colors.accent}`,
+                  },
+                  default: {
+                    shadowColor: colors.accent,
+                  },
+                }),
               ]}
             />
 
@@ -134,6 +142,7 @@ const TopHeader = () => {
 
           {/* Profile */}
           <Pressable
+            accessibilityLabel="Open profile"
             style={[
               styles.profileButton,
               {
@@ -231,16 +240,18 @@ const styles = StyleSheet.create({
     borderRadius: 999,
 
     opacity: 0.18,
-
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-
-    shadowOpacity: 0.9,
-    shadowRadius: 10,
-
-    elevation: 8,
+    ...Platform.select({
+      web: {},
+      default: {
+        shadowOffset: {
+          width: 0,
+          height: 0,
+        },
+        shadowOpacity: 0.9,
+        shadowRadius: 10,
+        elevation: 8,
+      },
+    }),
   },
 
   levelContainer: {

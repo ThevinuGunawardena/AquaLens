@@ -1,8 +1,9 @@
 import TopHeader from "@/components/TopHeader";
+import { confirmAction, showAlert } from "@/services/alerts";
 import { setAuthToken } from "@/services/api";
 import type { RootState } from "@/store";
 import { logout } from "@/store/authSlice";
-import { setMode } from "@/store/ThemeSlice";
+import { setMode, type ThemeColors } from "@/store/ThemeSlice";
 import { useRouter } from "expo-router";
 import {
   Bell,
@@ -16,7 +17,6 @@ import {
 } from "lucide-react-native";
 import { ReactNode, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,47 +27,24 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 
-const Settings = () => {
-  const colors = useSelector((state: RootState) => state.theme.colors);
-  const mode = useSelector((state: RootState) => state.theme.mode);
-  const dispatch = useDispatch();
-  const router = useRouter();
-  const [notifications, setNotifications] = useState(true);
-
-  const confirmLogout = () => {
-    Alert.alert(
-      "Log out?",
-      "You can sign back in anytime to continue your catch record.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log out",
-          style: "destructive",
-          onPress: () => {
-            setAuthToken(null); // clears in-memory token AND persisted storage
-            dispatch(logout());
-            router.replace("/(auth)/sign-in");
-          },
-        },
-      ],
-    );
-  };
-
-  const SettingRow = ({
-    icon: Icon,
-    title,
-    subtitle,
-    trailing,
-    onPress,
-    danger = false,
-  }: {
-    icon: typeof Bell;
-    title: string;
-    subtitle?: string;
-    trailing?: ReactNode;
-    onPress?: () => void;
-    danger?: boolean;
-  }) => (
+function SettingRow({
+  icon: Icon,
+  title,
+  subtitle,
+  trailing,
+  onPress,
+  danger = false,
+  colors,
+}: {
+  icon: typeof Bell;
+  title: string;
+  subtitle?: string;
+  trailing?: ReactNode;
+  onPress?: () => void;
+  danger?: boolean;
+  colors: ThemeColors;
+}) {
+  return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
@@ -116,6 +93,27 @@ const Settings = () => {
         ) : null)}
     </Pressable>
   );
+}
+
+const Settings = () => {
+  const colors = useSelector((state: RootState) => state.theme.colors);
+  const mode = useSelector((state: RootState) => state.theme.mode);
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const [notifications, setNotifications] = useState(true);
+
+  const confirmLogout = () => {
+    confirmAction(
+      "Log out?",
+      "You can sign back in anytime to continue your catch record.",
+      "Log out",
+      () => {
+        setAuthToken(null); // clears in-memory token AND persisted storage
+        dispatch(logout());
+        router.replace("/(auth)/sign-in");
+      },
+    );
+  };
 
   return (
     <SafeAreaView
@@ -146,13 +144,15 @@ const Settings = () => {
           <SettingRow
             icon={UserRound}
             title="Edit profile"
-            subtitle="Name, email, phone and photo"
+            subtitle="Name, school, district and photo"
+            colors={colors}
             onPress={() => router.push("/(tabs)/profile")}
           />
           <SettingRow
             icon={Shield}
             title="Privacy & security"
             subtitle="Your account is protected"
+            colors={colors}
           />
         </View>
 
@@ -169,6 +169,7 @@ const Settings = () => {
             icon={Bell}
             title="Catch alerts"
             subtitle="Get notified about your fishing progress"
+            colors={colors}
             trailing={
               <Switch
                 value={notifications}
@@ -187,6 +188,7 @@ const Settings = () => {
             icon={Moon}
             title="Dark mode"
             subtitle="Use the tactical night palette"
+            colors={colors}
             trailing={
               <Switch
                 value={mode === "dark"}
@@ -218,13 +220,17 @@ const Settings = () => {
             icon={BookOpen}
             title="Fish Dictionary"
             subtitle="Browse all species and biological specifications"
+            colors={colors}
             onPress={() => router.push("/(tabs)/dictionary")}
           />
           <SettingRow
             icon={Info}
             title="About Aqua Lens"
             subtitle="Version 1.0.0"
-            onPress={() => router.push("/(tabs)")}
+            colors={colors}
+            onPress={() =>
+              showAlert("Aqua Lens", "Version 1.0.0 — Catch logger & species guide.")
+            }
           />
         </View>
 

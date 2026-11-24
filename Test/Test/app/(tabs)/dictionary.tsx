@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -16,6 +17,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+
+const ListSeparator = () => <View style={styles.separator} />;
 
 const Dictionary = () => {
   const colors = useSelector((state: RootState) => state.theme.colors);
@@ -28,10 +31,14 @@ const Dictionary = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const handleQueryChange = (nextQuery: string) => {
+    setQuery(nextQuery);
     setLoading(true);
     setError(null);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
 
     // Small debounce so we don't fire a request per keystroke.
     const handle = setTimeout(() => {
@@ -100,11 +107,18 @@ const Dictionary = () => {
               backgroundColor: colors.surfaceContainer,
               borderColor: isFocused ? colors.accent : colors.border,
               borderWidth: isFocused ? 1.5 : 1,
-              shadowColor: colors.accent,
-              shadowOpacity: isFocused ? 0.25 : 0,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 0 },
             },
+            Platform.select({
+              web: {
+                boxShadow: isFocused ? `0px 0px 8px ${colors.accent}40` : "none",
+              },
+              default: {
+                shadowColor: colors.accent,
+                shadowOpacity: isFocused ? 0.25 : 0,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 0 },
+              },
+            }),
           ]}
         >
           <Search
@@ -113,7 +127,7 @@ const Dictionary = () => {
           />
           <TextInput
             value={query}
-            onChangeText={setQuery}
+            onChangeText={handleQueryChange}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="Search by name or species..."
@@ -123,7 +137,7 @@ const Dictionary = () => {
           />
           {query.length > 0 && (
             <Pressable
-              onPress={() => setQuery("")}
+              onPress={() => handleQueryChange("")}
               hitSlop={8}
               style={[
                 styles.clearButton,
@@ -160,13 +174,13 @@ const Dictionary = () => {
           data={species}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={ListSeparator}
           ListEmptyComponent={
             <View style={styles.centerPadWide}>
               <Text
                 style={[styles.emptyText, { color: colors.mutedForeground }]}
               >
-                No fish found for "{query}"
+                No fish found for &ldquo;{query}&rdquo;
               </Text>
             </View>
           }

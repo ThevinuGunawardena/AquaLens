@@ -43,7 +43,7 @@ const darkColors: ThemeColors = {
   mutedForeground: "#b9caca",
   muted: "#313540",
   success: "#16a34a",
-  destructive: "#93000a", // aligned to HTML's error-container
+  destructive: "#f87171",
 };
 
 const lightColors: ThemeColors = {

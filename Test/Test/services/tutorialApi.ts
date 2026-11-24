@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { UserDto } from "./authApi";
+import { normalizeUser, type UserDto } from "./authApi";
 
 export interface TutorialStep {
   step: number;
@@ -24,7 +24,9 @@ export interface ProfileUpdateInput {
 }
 
 export const usersApi = {
-  stats: () => api.get<UserDto>("/users/me/stats"),
-  updateProfile: (payload: ProfileUpdateInput) => api.patch<UserDto>("/users/me", payload),
-  completeTutorial: () => api.post<UserDto>("/users/me/tutorial-complete"),
+  stats: async () => normalizeUser(await api.get<UserDto>("/users/me/stats")),
+  updateProfile: async (payload: ProfileUpdateInput) =>
+    normalizeUser(await api.patch<UserDto>("/users/me", payload)),
+  completeTutorial: async () =>
+    normalizeUser(await api.post<UserDto>("/users/me/tutorial-complete")),
 };

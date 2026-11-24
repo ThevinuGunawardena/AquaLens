@@ -3,15 +3,14 @@ import FishSpeciesDropdown, {
   type SelectedFish,
 } from "@/components/FishSpeciesDropdown";
 import TopHeader from "@/components/TopHeader";
+import { showAlert } from "@/services/alerts";
 import { ApiError } from "@/services/api";
 import { catchesApi } from "@/services/catchesApi";
 import type { AppDispatch, RootState } from "@/store";
 import { fetchMe } from "@/store/authSlice";
-import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +20,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
+
+function parsePositiveNumber(raw: string): number | null {
+  const normalized = raw.trim().replace(",", ".");
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
 
 // Best-effort name extraction — newly_unlocked_achievements is typed as
 // unknown[] on the client, so we don't assume a shape. Adjust the field
@@ -36,10 +42,9 @@ function achievementName(a: unknown, index: number): string {
   return `Achievement ${index + 1}`;
 }
 
-const index = () => {
+const HomeScreen = () => {
   const colors = useSelector((state: RootState) => state.theme.colors);
   const dispatch = useDispatch<AppDispatch>();
-  const router = useRouter();
 
   const [lengthText, setLengthText] = useState("");
   const [widthText, setWidthText] = useState("");
@@ -48,6 +53,7 @@ const index = () => {
 
   const [selectedFish, setSelectedFish] = useState<SelectedFish | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
@@ -60,18 +66,26 @@ const index = () => {
     "length" | "width" | "remarks" | "boat" | null
   >(null);
 
-  const length = parseFloat(lengthText) || 0;
-  const width = parseFloat(widthText) || 0;
-  const canSave = !!selectedFish && length > 0 && !saving;
+  const length = parsePositiveNumber(lengthText);
+  const width = parsePositiveNumber(widthText);
+  const widthInvalid = widthText.trim().length > 0 && width === null;
+  const canSave =
+    !!selectedFish &&
+    length !== null &&
+    !widthInvalid &&
+    !uploadingPhoto &&
+    !saving;
 
   const handleSave = async () => {
-    if (!selectedFish) return;
+    if (!selectedFish || length === null || widthInvalid || uploadingPhoto) {
+      return;
+    }
     setSaving(true);
     try {
       const result = await catchesApi.add({
         species_id: selectedFish.id,
         length_cm: length,
-        width_cm: width > 0 ? width : undefined,
+        width_cm: width ?? undefined,
         remarks: remarks.trim() || undefined,
         boat_number: boatNumber.trim() || undefined,
         image: imageUrl ?? undefined,
@@ -96,19 +110,18 @@ const index = () => {
             unlocked.map((a, i) => achievementName(a, i)).join("\n🏆 ")
           : "";
 
-      Alert.alert(
+      showAlert(
         "Catch logged!",
         `+${result.xp_awarded} XP` +
           (unlocked.length > 0
             ? ` — ${unlocked.length} new achievement${unlocked.length > 1 ? "s" : ""} unlocked!`
             : "") +
           achievementLines,
-        [{ text: "OK" }],
       );
     } catch (e) {
       const message =
         e instanceof ApiError ? e.message : "Couldn't log this catch.";
-      Alert.alert("Save failed", message);
+      showAlert("Save failed", message);
     } finally {
       setSaving(false);
     }
@@ -146,6 +159,7 @@ const index = () => {
             <CatchPhotoUpload
               key={`photo-${formKey}`}
               onUploaded={setImageUrl}
+              onUploadingChange={setUploadingPhoto}
             />
 
             <View style={styles.section}>
@@ -414,4 +428,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default index;
+export default HomeScreen;

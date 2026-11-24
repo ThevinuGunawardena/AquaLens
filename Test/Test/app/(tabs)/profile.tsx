@@ -1,17 +1,18 @@
 import Achievements from "@/components/Achievements";
 import AddedPhotos from "@/components/AddedPhotos";
 import TopHeader from "@/components/TopHeader";
+import { showAlert } from "@/services/alerts";
 import { ApiError } from "@/services/api";
-import { catchesApi } from "@/services/catchesApi";
+import { catchesApi, type UploadImageMetadata } from "@/services/catchesApi";
 import type { AppDispatch, RootState } from "@/store";
 import { fetchMe, updateProfile } from "@/store/authSlice";
 import type { ThemeColors } from "@/store/ThemeSlice";
 import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect } from "expo-router";
 import { Camera, Check, Pencil, UserRound, X } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -104,6 +105,9 @@ const Profile = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoMeta, setPhotoMeta] = useState<UploadImageMetadata | undefined>(
+    undefined,
+  );
   const [saving, setSaving] = useState(false);
   const [totalCatches, setTotalCatches] = useState<number | null>(null);
 
@@ -114,37 +118,54 @@ const Profile = () => {
     district: user?.district ?? "",
   });
 
-  // Keep the form in sync whenever the store's user changes (e.g. after a
-  // fresh fetchMe() or a successful save).
-  useEffect(() => {
-    if (user) {
-      setForm({
-        name: user.name,
-        email: user.email,
-        school_or_university: user.school_or_university ?? "",
-        district: user.district ?? "",
-      });
+  const displayForm = isEditing
+    ? form
+    : {
+        name: user?.name ?? "",
+        email: user?.email ?? "",
+        school_or_university: user?.school_or_university ?? "",
+        district: user?.district ?? "",
+      };
+
+  const toggleEditing = () => {
+    if (isEditing) {
+      setPhotoUri(null);
+      setPhotoMeta(undefined);
+      setIsEditing(false);
+      return;
     }
-  }, [user?.name, user?.email, user?.school_or_university, user?.district]);
+    setForm({
+      name: user?.name ?? "",
+      email: user?.email ?? "",
+      school_or_university: user?.school_or_university ?? "",
+      district: user?.district ?? "",
+    });
+    setIsEditing(true);
+  };
 
-  useEffect(() => {
-    if (!user) dispatch(fetchMe());
-  }, [user, dispatch]);
-
-  useEffect(() => {
-    // limit=1 avoids pulling every catch just to read `total`.
-    catchesApi
-      .mineWithTotal(1, 0)
-      .then((res) => setTotalCatches(res.total))
-      .catch(() => {
-        // Non-fatal — the stat pill just shows a dash.
-      });
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      dispatch(fetchMe());
+      // limit=1 avoids pulling every catch just to read `total`.
+      catchesApi
+        .mineWithTotal(1, 0)
+        .then((res) => {
+          if (!cancelled) setTotalCatches(res.total);
+        })
+        .catch(() => {
+          // Non-fatal — the stat pill just shows a dash.
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [dispatch]),
+  );
 
   const pickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
+      showAlert(
         "Photo access needed",
         "Allow photo access to choose a profile image.",
       );
@@ -156,23 +177,32 @@ const Profile = () => {
       aspect: [1, 1],
       quality: 0.8,
     });
-    if (!result.canceled) setPhotoUri(result.assets[0].uri);
+    if (!result.canceled && result.assets.length > 0) {
+      const asset = result.assets[0];
+      setPhotoUri(asset.uri);
+      setPhotoMeta({ fileName: asset.fileName, mimeType: asset.mimeType });
+      if (!isEditing) {
+        setForm({
+          name: user?.name ?? "",
+          email: user?.email ?? "",
+          school_or_university: user?.school_or_university ?? "",
+          district: user?.district ?? "",
+        });
+        setIsEditing(true);
+      }
+    }
   };
 
   const saveProfile = async () => {
     if (!form.name.trim()) {
-      Alert.alert("Incomplete profile", "Name is required.");
+      showAlert("Incomplete profile", "Name is required.");
       return;
     }
     setSaving(true);
     try {
       let avatarUrl: string | undefined = undefined;
       if (photoUri && !photoUri.startsWith("http")) {
-        try {
-          avatarUrl = await catchesApi.uploadImage(photoUri);
-        } catch {
-          // If upload fails, continue updating profile details
-        }
+        avatarUrl = await catchesApi.uploadImage(photoUri, photoMeta);
       }
       await dispatch(
         updateProfile({
@@ -182,12 +212,14 @@ const Profile = () => {
           district: form.district.trim() || null,
         }),
       ).unwrap();
+      setPhotoUri(null);
+      setPhotoMeta(undefined);
       setIsEditing(false);
-      Alert.alert("Profile updated", "Your angler records are up to date.");
+      showAlert("Profile updated", "Your angler records are up to date.");
     } catch (e) {
       const message =
         e instanceof ApiError ? e.message : "Couldn't save your profile.";
-      Alert.alert("Save failed", message);
+      showAlert("Save failed", message);
     } finally {
       setSaving(false);
     }
@@ -230,7 +262,7 @@ const Profile = () => {
             </Text>
           </View>
           <Pressable
-            onPress={() => setIsEditing((v) => !v)}
+            onPress={toggleEditing}
             accessibilityLabel={isEditing ? "Cancel editing" : "Edit profile"}
             hitSlop={8}
             style={({ pressed }) => [
@@ -295,14 +327,14 @@ const Profile = () => {
                 style={[styles.name, { color: colors.foreground }]}
                 numberOfLines={1}
               >
-                {form.name || "Angler"}
+                {displayForm.name || "Angler"}
               </Text>
             </View>
           </View>
 
           <ProfileField
             label="FULL NAME"
-            value={form.name}
+            value={displayForm.name}
             editable={isEditing}
             onChangeText={(name) =>
               setForm((current) => ({ ...current, name }))
@@ -311,14 +343,14 @@ const Profile = () => {
           />
           <ProfileField
             label="EMAIL"
-            value={form.email}
+            value={displayForm.email}
             editable={false}
             onChangeText={() => {}}
             colors={colors}
           />
           <ProfileField
             label="SCHOOL / UNIVERSITY"
-            value={form.school_or_university}
+            value={displayForm.school_or_university}
             editable={isEditing}
             onChangeText={(school_or_university) =>
               setForm((current) => ({ ...current, school_or_university }))
@@ -327,7 +359,7 @@ const Profile = () => {
           />
           <ProfileField
             label="DISTRICT"
-            value={form.district}
+            value={displayForm.district}
             editable={isEditing}
             onChangeText={(district) =>
               setForm((current) => ({ ...current, district }))
