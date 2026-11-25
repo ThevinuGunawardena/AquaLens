@@ -41,7 +41,7 @@ export function resolveAssetUrl(assetPath: string | null | undefined): string | 
   return `${BASE_URL}/${assetPath}`;
 }
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 /** Fetch wrapper that aborts stalled requests after `timeoutMs`. */
 async function fetchWithTimeout(

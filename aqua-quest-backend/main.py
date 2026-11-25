@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 import sqlite3
 from typing import Annotated, Any
@@ -29,7 +30,7 @@ from database import (
     verify_password,
 )
 
-UPLOADS_DIR = BASE_DIR / "static" / "uploads"
+UPLOADS_DIR = Path(os.getenv("UPLOADS_DIR", str(BASE_DIR / "static" / "uploads")))
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -79,6 +80,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

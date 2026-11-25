@@ -154,6 +154,7 @@ def get_db() -> Iterator[sqlite3.Connection]:
 
 def init_db() -> None:
     """Creates tables and populates seed species and achievements if empty."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_db() as conn:
         conn.executescript(
             """
