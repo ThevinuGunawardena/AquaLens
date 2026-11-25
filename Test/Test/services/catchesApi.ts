@@ -1,3 +1,4 @@
+import { File as ExpoFile } from "expo-file-system";
 import { Platform } from "react-native";
 
 import { api, resolveAssetUrl } from "./api";
@@ -92,11 +93,17 @@ export const catchesApi = {
         : `catch-${Date.now()}.${extensionFromMimeType(blob.type) ?? fallbackExt}`;
       form.append("file", blob, webFilename);
     } else {
+      // Expo SDK 57 installs WinterCG `expo/fetch`, which rejects legacy RN
+      // `{ uri, name, type }` objects with "Unsupported FormDataPart implementation"
+      // and expects either a `Blob` or a file-like part exposing `.bytes()`.
+      const nativeFile = new ExpoFile(localUri);
+      const resolvedMime =
+        meta?.mimeType || nativeFile.type || guessMimeType(filename);
       form.append("file", {
-        uri: localUri,
         name: filename,
-        type: meta?.mimeType || guessMimeType(filename),
-      } as any);
+        type: resolvedMime,
+        bytes: () => nativeFile.bytes(),
+      } as unknown as Blob);
     }
 
     const data = await api.post<{ url: string }>(
