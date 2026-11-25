@@ -17,7 +17,7 @@
       },
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aqualens.msdfar.com"
+        "EXPO_PUBLIC_API_URL": "https://aqua-quest-backend-production.up.railway.app"
       }
     },
     "production": {
@@ -25,7 +25,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aqualens.msdfar.com"
+        "EXPO_PUBLIC_API_URL": "https://aqua-quest-backend-production.up.railway.app"
       }
     }
   }
